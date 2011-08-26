@@ -10,20 +10,24 @@ module Trucker
       model = name.to_s.classify
   
       # Wipe out existing records
-      model.constantize.delete_all
+      if options[:delete_existing]
+        model.constantize.delete_all
+      end
 
       # Status message
       status = "Migrating "
       status += "#{number_of_records || "all"} #{label || name}"
       status += " after #{offset_for_records}" if offset_for_records
   
+      records = query(model)
+  
       # Set import counter
       counter = 0
       counter += offset_for_records.to_i if offset_for_records
-      total_records = "Legacy#{model}".constantize.count
+      total_records = records.size
   
       # Start import
-      query(model).each do |record|
+      records.each do |record|
         counter += 1
         puts status + " (#{counter}/#{total_records})"
         record.migrate
@@ -34,15 +38,16 @@ module Trucker
   end
 
   def self.query(model)
-    eval construct_query(model)
+    model_class = "Legacy#{model.singularize.titlecase}".constantize
+    model_class.respond_to?(:query) ? model_class.query : eval(construct_query(model))
   end
 
   def self.construct_query(model)
     base = "Legacy#{model.singularize.titlecase}"
     if ENV['limit'] or ENV['offset'] or ENV['where']
-      complete = base + "#{where}#{number_of_records}#{offset_for_records}"
+      complete = base + "#{where}#{number_of_records}#{offset_for_records}.order(:id)"
     else
-      complete = base + ".all"
+      complete = base + ".order(:id).all"
     end
     complete
   end
@@ -64,4 +69,3 @@ module Trucker
   end
   
 end
-
