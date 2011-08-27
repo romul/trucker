@@ -38,7 +38,7 @@ module Trucker
   end
 
   def self.query(model)
-    model_class = "Legacy#{model.singularize.titlecase}".constantize
+    model_class = "Legacy#{model.classify}".constantize
     model_class.respond_to?(:query) ? model_class.query : eval(construct_query(model))
   end
 
